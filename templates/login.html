@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <!-- Required meta tags -->
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <link href="https://fonts.googleapis.com/css?family=Roboto:300,400&display=swap" rel="stylesheet">
+
+    <link rel="stylesheet" href="{{ url_for('static',filename='login/fonts/icomoon/style.css')}}">
+
+    <link rel="stylesheet" href="{{ url_for('static',filename='login/css/owl.carousel.min.css')}}">
+
+    <!-- Bootstrap CSS -->
+    <link rel="stylesheet" href="{{ url_for('static',filename='login/css/bootstrap.min.css')}}">
+    
+    <!-- Style -->
+    <link rel="stylesheet" href="{{ url_for('static',filename='login/css/style.css')}}">
+    <title>Login #5</title>
+  </head>
+  <body>
+  
+
+  <div class="d-md-flex half">
+    <div class="bg" style="background-image: url('images/bg_1.jpg');"></div>
+    <div class="contents">
+
+      <div class="container">
+        <div class="row align-items-center justify-content-center">
+          <div class="col-md-12">
+            <div class="form-block mx-auto">
+              <div class="text-center mb-5">
+                {% if error %}
+            <div class="alert alert-danger">{{ error }}</div>
+                {% endif %}
+                <h3 class="text-uppercase">Login</h3>
+              </div>
+              <!-- Tombol switch -->
+              <div class="d-flex justify-content-between align-items-center mb-3">
+                <button type="button" class="btn btn-outline-primary btn-sm" onclick="showAdminForm()">Login Admin/Petugas</button>
+                <button type="button" class="btn btn-outline-success btn-sm" onclick="showUserForm()">Login User</button>
+              </div>
+              <!-- Form Login Admin/Petugas (email) -->
+              <form id="adminForm" method="post">
+                <input type="hidden" name="login_type" value="admin">
+                <div class="form-group first">
+                  <label for="email">Email</label>
+                  <input name="email" type="text" class="form-control" placeholder="your-email@gmail.com" required>
+                </div>
+                <div class="form-group last mb-3">
+                  <label for="password">Password</label>
+                  <input name="password" type="password" class="form-control" placeholder="Your Password" required>
+                </div>
+                <div class="d-flex justify-content-between align-items-center">
+                  <button type="submit" class="btn btn-primary px-4">Login</button>
+                </div>
+              </form>
+              <!-- Form Login User (id_rfid/email) -->
+              <form id="userForm" method="post" style="display:none;">
+                <input type="hidden" name="login_type" value="user">
+                <div class="form-group first">
+                  <label for="email">ID RFID / Email</label>
+                  <input name="email" type="text" class="form-control" placeholder="ID RFID atau Email" required>
+                </div>
+                <div class="form-group last mb-3">
+                  <label for="password">Password (boleh kosong)</label>
+                  <input name="password" type="password" class="form-control" placeholder="Password">
+                </div>
+                <div class="d-flex justify-content-between align-items-center">
+                  <button type="submit" class="btn btn-success px-4">Login User</button>
+                </div>
+              </form>
+    <script>
+      function showAdminForm() {
+        document.getElementById('adminForm').style.display = '';
+        document.getElementById('userForm').style.display = 'none';
+      }
+      function showUserForm() {
+        document.getElementById('adminForm').style.display = 'none';
+        document.getElementById('userForm').style.display = '';
+      }
+    </script>
+
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    
+  </div>
+    
+    
+
+    <script src="{{ url_for('static',filename='login/js/jquery-3.3.1.min.js')}}"></script>
+    <script src="{{ url_for('static',filename='login/js/popper.min.js')}}"></script>
+    <script src="{{ url_for('static',filename='login/js/bootstrap.min.js')}}"></script>
+    <script src="{{ url_for('static',filename='login/js/main.js')}}"></script>
+  </body>
+</html>

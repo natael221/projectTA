@@ -1,0 +1,17 @@
+<!-- templates/cari.html -->
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Cari Data RFID</title>
+</head>
+<body>
+    <h2>Cari Riwayat Data Berdasarkan ID RFID</h2>
+    <form method="POST" action="{{ url_for('cari_data') }}">
+        <label for="id_rfid">ID RFID:</label>
+        <input type="text" name="id_rfid" id="id_rfid" required>
+        <button type="submit">Cari</button>
+    </form>
+    <br>
+    <a href="{{ url_for('dashboard') }}">Kembali ke Dashboard</a>
+</body>
+</html>
