@@ -72,7 +72,7 @@ def login():
                 role, id_rfid = get_user_role(user['idToken'], email=identifier)
                 session['role'] = role
                 session['id_rfid'] = id_rfid if role == 'pengguna' else None
-                return redirect(url_for('dashboard'))
+                return redirect(url_for('live_view'))
             except:
                 error = "Email atau password salah."
         elif login_type == 'user':
@@ -130,36 +130,49 @@ def dashboard():
     id_rfid = session.get('id_rfid')
     token = session['user']
 
-    # Jika pengguna login RFID (token bukan idToken Firebase), ambil data tanpa token
-    if role == "pengguna" and (not token or token.endswith("_token")):
-        data = db.child("Data").get().val()
-        users = db.child("Users").get().val() or {}
-    else:
-        data = db.child("Data").get(token=token).val()
-        users = db.child("Users").get(token=token).val() or {}
+    # Ambil data dari DataSementara dan Data
+    data_sementara = db.child("DataSementara").get().val() or {}
+    data = db.child("Data").get().val() or {}
+    users = db.child("Users").get().val() or {}
+
     rows = []
 
-    if data:
-        for key, value in data.items():
-            if isinstance(value, dict):
-                data_id = value.get("idRfid", "-")
-                waktu = value.get("Waktu", "-")
-                name = users.get(data_id, {}).get("name", "-")
-                # Hanya tampilkan log milik user sendiri jika role pengguna
-                if role == "pengguna":
-                    if data_id != id_rfid:
-                        continue
-                row = {
-                    "id": key,
-                    "idRfid": data_id,
-                    "name": name,
-                    "waktu": waktu,
-                    "status": "Masuk" if "masuk" in key.lower() else "Keluar"
-                }
-                rows.append(row)
-        rows.sort(key=lambda x: x['waktu'], reverse=True)
+    # Proses DataSementara
+    for key, value in data_sementara.items():
+        if isinstance(value, dict):
+            data_id = value.get("idRfid", "-")
+            name = users.get(data_id, {}).get("name", "-")
+            row = {
+                "id": key,
+                "idRfid": data_id,
+                "name": name,
+                "waktuMasuk": value.get("waktuMasuk", "-"),
+                "waktuKeluar": "-"
+            }
+            rows.append(row)
 
-    return render_template('index.html', data=rows, role=role)
+    # Proses Data
+    for key, value in data.items():
+        if isinstance(value, dict):
+            data_id = value.get("idRfid", "-")
+            name = users.get(data_id, {}).get("name", "-")
+            row = {
+                "id": key,
+                "idRfid": data_id,
+                "name": name,
+                "waktuMasuk": value.get("waktuMasuk", "-"),
+                "waktuKeluar": value.get("waktuKeluar", "-")
+            }
+            rows.append(row)
+
+    # Urutkan berdasarkan waktu masuk
+    rows.sort(key=lambda x: x['waktuMasuk'], reverse=True)
+
+    # Filter data hanya untuk pengguna dengan idRfid yang sesuai
+    if role == 'pengguna' and id_rfid:
+        rows = [row for row in rows if row['idRfid'] == id_rfid]
+
+    return render_template('index.html', data_sementara=data_sementara, data=data, role=role, rows=rows, css_classes={"masuk": "status-masuk", "keluar": "status-keluar", "default": "status-default"})
 
 @app.route('/register', methods=['GET', 'POST'])
 def register():
@@ -185,7 +198,10 @@ def register():
             message = f"Pengguna {name} berhasil didaftarkan."
         else:
             message = "Semua field wajib diisi."
-    return render_template('register.html', message=message)
+
+    role = session.get('role')  # ⬅️ Tambahkan ini
+    return render_template('register.html', message=message, role=role)
+
 
 @app.route('/edit/<id_rfid>', methods=['GET', 'POST'])
 def edit_user(id_rfid):
@@ -193,12 +209,15 @@ def edit_user(id_rfid):
         return redirect(url_for('login'))
     if session['role'] == "pengguna" and session['id_rfid'] != id_rfid:
         return "Tidak diizinkan mengedit data pengguna lain.", 403
+
     if session.get('role') == 'pengguna':
         user_data = db.child("Users").child(id_rfid).get().val()
     else:
         user_data = db.child("Users").child(id_rfid).get(token=session['user']).val()
+
     if not user_data:
         return "Pengguna tidak ditemukan", 404
+
     message = None
     if request.method == 'POST':
         name = request.form.get('name')
@@ -218,16 +237,22 @@ def edit_user(id_rfid):
             message = f"Data pengguna {name} berhasil diperbarui."
         else:
             message = "Semua field wajib diisi."
-    return render_template("edit.html", user=user_data, id_rfid=id_rfid, message=message)
+
+    role = session.get('role')
+    return render_template("edit.html", user=user_data, id_rfid=id_rfid, message=message, role=role)
 
 @app.route('/pengguna')
 def pengguna_list():
     if 'user' not in session:
         return redirect(url_for('login'))
-    if session.get('role') == 'pengguna':
+
+    role = session.get('role')  # ← Tambahkan ini
+
+    if role == 'pengguna':
         users = db.child("Users").get().val() or {}
     else:
         users = db.child("Users").get(token=session['user']).val() or {}
+
     data = []
     for id_rfid, info in users.items():
         row = {
@@ -238,7 +263,10 @@ def pengguna_list():
             "tanggal_daftar": info.get("tanggal_daftar", "-")
         }
         data.append(row)
-    return render_template("pengguna.html", users=data)
+
+    # Kirim juga variabel 'role' ke template
+    return render_template("pengguna.html", users=data, role=role)
+
 
 @app.route('/live')
 def live_view():
@@ -264,37 +292,6 @@ def get_latest_rfid():
         "name": user_info.get("name", "-"),
         "no_stnk": user_info.get("no_stnk", "-")
     })
-
-@app.route('/cari', methods=['GET', 'POST'])
-def cari_data():
-    if 'user' not in session:
-        return redirect(url_for('login'))
-    hasil = []
-    id_rfid = ""
-    name = "-"
-    if request.method == 'POST':
-        id_rfid = request.form.get('id_rfid')
-        if id_rfid:
-            if session.get('role') == 'pengguna':
-                user_info = db.child("Users").child(id_rfid).get().val()
-                name = user_info.get("name", "-") if user_info else "-"
-                semua_data = db.child("Data").get().val()
-            else:
-                user_info = db.child("Users").child(id_rfid).get(token=session['user']).val()
-                name = user_info.get("name", "-") if user_info else "-"
-                semua_data = db.child("Data").get(token=session['user']).val()
-            if semua_data:
-                for key, value in semua_data.items():
-                    if isinstance(value, dict) and value.get("idRfid") == id_rfid:
-                        hasil.append({
-                            "id": key,
-                            "idRfid": value.get("idRfid", "-"),
-                            "waktu": value.get("Waktu", "-"),
-                            "name": name
-                        })
-            hasil.sort(key=lambda x: x['waktu'], reverse=True)
-        return render_template("hasil.html", data=hasil, id_rfid=id_rfid)
-    return render_template("login_pengguna.html")
 
 @app.route('/set_password', methods=['GET', 'POST'])
 def set_password():
